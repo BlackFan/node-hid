@@ -63,7 +63,7 @@ public:
 
   typedef vector<unsigned char> databuf_t;
 
-  int write(const databuf_t& message)
+  int write(const databuf_t& message, bool useCtrl)
     throw(JSException);
   void close();
   void setNonBlocking(int message)
@@ -159,7 +159,7 @@ HID::setNonBlocking(int message)
 }
 
 int
-HID::write(const databuf_t& message)
+HID::write(const databuf_t& message, bool useCtrl)
   throw(JSException)
 {
   //unsigned char buf[message.size()];
@@ -169,7 +169,7 @@ HID::write(const databuf_t& message)
   for (vector<unsigned char>::const_iterator i = message.begin(); i != message.end(); i++) {
     *p++ = *i;
   }
-  res = hid_write(_hidHandle, buf, message.size());
+  res = (useCtrl?hid_write_control:hid_write)(_hidHandle, buf, message.size());
   delete[] buf;
   if (res < 0) {
     throw JSException("Cannot write to HID device");
@@ -456,9 +456,10 @@ NAN_METHOD(HID::setNonBlocking)
 NAN_METHOD(HID::write)
 {
   Nan::HandleScope scope;
-
-  if (info.Length() != 1) {
-    return Nan::ThrowError("HID write requires one argument");
+  
+  auto len = info.Length();
+  if(len != 1 && len != 2) {
+    return Nan::ThrowError("HID write takes only one or two arguments");
   }
 
   try {
@@ -472,7 +473,11 @@ NAN_METHOD(HID::write)
       }
       message.push_back((unsigned char) messageArray->Get(i)->Int32Value());
     }
-    int returnedLength = hid->write(message); // returns number of bytes written
+	
+	bool ctrl = false;
+	if(len == 2 && info[1]->IsBoolean()) ctrl = info[1]->BooleanValue();
+	
+    int returnedLength = hid->write(message, ctrl); // returns number of bytes written
 
     info.GetReturnValue().Set(Nan::New<Integer>(returnedLength));
   }
