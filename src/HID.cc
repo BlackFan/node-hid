@@ -159,7 +159,7 @@ HID::setNonBlocking(int message)
 }
 
 int
-HID::write(const databuf_t& message)
+HID::write(const databuf_t& message, bool useCtrl)
   throw(JSException)
 {
   if(!_hidHandle) {
